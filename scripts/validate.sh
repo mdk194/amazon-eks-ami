@@ -19,9 +19,8 @@ validate_file_nonexists() {
 }
 
 validate_file_nonexists '/etc/hostname'
-validate_file_nonexists '/etc/resolv.conf'
 validate_file_nonexists '/etc/ssh/ssh_host*'
-validate_file_nonexists '/home/ec2-user/.ssh/authorized_keys'
+validate_file_nonexists '/home/ubuntu/.ssh/authorized_keys'
 validate_file_nonexists '/root/.ssh/authorized_keys'
 validate_file_nonexists '/var/lib/cloud/data'
 validate_file_nonexists '/var/lib/cloud/instance'
@@ -35,13 +34,3 @@ validate_file_nonexists '/var/log/cloud-init.log'
 validate_file_nonexists '/var/log/secure'
 validate_file_nonexists '/var/log/wtmp'
 
-actual_kernel=$(uname -r)
-echo "Verifying that kernel version $actual_kernel matches $KERNEL_VERSION"
-
-if [[ $actual_kernel == $KERNEL_VERSION* ]]
-then
-    echo "Kernel matches expected version"
-else
-    echo "Kernel does not match expected version."
-    exit 1
-fi

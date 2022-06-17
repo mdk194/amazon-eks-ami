@@ -23,7 +23,6 @@ validate_env_set() {
 
 validate_env_set BINARY_BUCKET_NAME
 validate_env_set BINARY_BUCKET_REGION
-validate_env_set DOCKER_VERSION
 validate_env_set CONTAINERD_VERSION
 validate_env_set RUNC_VERSION
 validate_env_set CNI_PLUGIN_VERSION
@@ -50,44 +49,50 @@ fi
 ################################################################################
 
 # Update the OS to begin with to catch up to the latest packages.
-sudo yum update -y
+sudo apt-get update -y
 
 # Install necessary packages
-sudo yum install -y \
-    aws-cfn-bootstrap \
-    awscli \
-    chrony \
+sudo apt-get install -y --no-install-recommends \
+    iptables \
     conntrack \
     curl \
-    ec2-instance-connect \
     ipvsadm \
     jq \
-    nfs-utils \
     socat \
     unzip \
     wget \
-    yum-plugin-versionlock \
-    yum-utils
+    apt-transport-https \
+    ca-certificates \
+    software-properties-common \
+    containerd \
+    runc \
+    python3-pip \
+
+sudo pip3 install awscli
+
+sudo update-alternatives --set iptables /usr/sbin/iptables-legacy
+sudo update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
+
+# Install aws-cfn-bootstrap
+# sudo apt-get install -y python2.7
+# sudo apt-get install -y python-pip
+# sudo pip install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
+# sudo ln -s /root/aws-cfn-bootstrap-latest/init/ubuntu/cfn-hup /etc/init.d/cfn-hup
 
 # Remove any old kernel versions. `--count=1` here means "only leave 1 kernel version installed"
-sudo package-cleanup --oldkernels --count=1 -y
+# sudo package-cleanup --oldkernels --count=1 -y
 
 # Remove the ec2-net-utils package, if it's installed. This package interferes with the route setup on the instance.
-if yum list installed | grep ec2-net-utils; then sudo yum remove ec2-net-utils -y -q; fi
+# if yum list installed | grep ec2-net-utils; then sudo yum remove ec2-net-utils -y -q; fi
 
 ################################################################################
 ### Time #######################################################################
 ################################################################################
 
-# Make sure Amazon Time Sync Service starts on boot.
-sudo chkconfig chronyd on
-
 # Make sure that chronyd syncs RTC clock to the kernel.
-cat <<EOF | sudo tee -a /etc/chrony.conf
-# This directive enables kernel synchronisation (every 11 minutes) of the
-# real-time clock. Note that it can’t be used along with the 'rtcfile' directive.
-rtcsync
-EOF
+# Make sure Amazon Time Sync Service starts on boot.
+sudo timedatectl set-ntp true
+sudo timedatectl set-timezone Etc/UTC
 
 # If current clocksource is xen, switch to tsc
 if grep --quiet xen /sys/devices/system/clocksource/clocksource0/current_clocksource &&
@@ -102,8 +107,16 @@ fi
 ################################################################################
 
 # Disable weak ciphers
-echo -e "\nCiphers aes128-ctr,aes256-ctr,aes128-gcm@openssh.com,aes256-gcm@openssh.com" | sudo tee -a /etc/ssh/sshd_config
-sudo systemctl restart sshd.service
+# echo -e "\nCiphers aes128-ctr,aes256-ctr,aes128-gcm@openssh.com,aes256-gcm@openssh.com" | sudo tee -a /etc/ssh/sshd_config
+# sudo systemctl restart sshd.service
+
+################################################################################
+### ufw ###############################################
+################################################################################
+sudo systemctl stop ufw
+sudo systemctl disable ufw
+sudo systemctl mask ufw
+sudo apt-get remove -y ufw
 
 ################################################################################
 ### iptables ###################################################################
@@ -115,9 +128,9 @@ sudo mv $TEMPLATE_DIR/iptables-restore.service /etc/eks/iptables-restore.service
 ### Docker #####################################################################
 ################################################################################
 
-sudo yum install -y device-mapper-persistent-data lvm2
+# sudo yum install -y device-mapper-persistent-data lvm2
 
-INSTALL_DOCKER="${INSTALL_DOCKER:-true}"
+INSTALL_DOCKER="${INSTALL_DOCKER:-false}"
 if [[ "$INSTALL_DOCKER" == "true" ]]; then
     sudo amazon-linux-extras enable docker
     sudo groupadd -og 1950 docker
@@ -332,7 +345,7 @@ fi
 ### SSM Agent ##################################################################
 ################################################################################
 
-sudo yum install -y amazon-ssm-agent
+# sudo yum install -y amazon-ssm-agent
 
 ################################################################################
 ### AMI Metadata ###############################################################
@@ -366,26 +379,23 @@ echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf
 echo fs.inotify.max_user_instances=8192 | sudo tee -a /etc/sysctl.conf
 echo vm.max_map_count=524288 | sudo tee -a /etc/sysctl.conf
 
-
 ################################################################################
 ### Cleanup ####################################################################
 ################################################################################
 
 CLEANUP_IMAGE="${CLEANUP_IMAGE:-true}"
 if [[ "$CLEANUP_IMAGE" == "true" ]]; then
-    # Clean up yum caches to reduce the image size
-    sudo yum clean all
+    sudo apt-get clean
     sudo rm -rf \
         $TEMPLATE_DIR  \
-        /var/cache/yum
+        /var/cache/apt
 
     # Clean up files to reduce confusion during debug
     sudo rm -rf \
         /etc/hostname \
         /etc/machine-id \
-        /etc/resolv.conf \
         /etc/ssh/ssh_host* \
-        /home/ec2-user/.ssh/authorized_keys \
+        /home/ubuntu/.ssh/authorized_keys \
         /root/.ssh/authorized_keys \
         /var/lib/cloud/data \
         /var/lib/cloud/instance \
@@ -393,10 +403,10 @@ if [[ "$CLEANUP_IMAGE" == "true" ]]; then
         /var/lib/cloud/sem \
         /var/lib/dhclient/* \
         /var/lib/dhcp/dhclient.* \
-        /var/lib/yum/history \
+        /var/lib/apt/history \
         /var/log/cloud-init-output.log \
         /var/log/cloud-init.log \
-        /var/log/secure \
+        /var/log/auth.log \
         /var/log/wtmp
 fi
 

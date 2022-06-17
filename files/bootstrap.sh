@@ -27,7 +27,7 @@ function print_help {
     echo "--dns-cluster-ip Overrides the IP address to use for DNS queries within the cluster. Defaults to 10.100.0.10 or 172.20.0.10 based on the IP address of the primary interface"
     echo "--pause-container-account The AWS account (number) to pull the pause container from"
     echo "--pause-container-version The tag of the pause container"
-    echo "--container-runtime Specify a container runtime (default: dockerd)"
+    echo "--container-runtime Specify a container runtime (default: containerd)"
     echo "--ip-family Specify ip family of the cluster"
     echo "--service-ipv6-cidr ipv6 cidr range of the cluster"
     echo "--enable-local-outpost Enable support for worker nodes to communicate with the local control plane when running on a disconnected Outpost. (true or false)"
@@ -146,7 +146,7 @@ API_RETRY_ATTEMPTS="${API_RETRY_ATTEMPTS:-3}"
 DOCKER_CONFIG_JSON="${DOCKER_CONFIG_JSON:-}"
 CONTAINERD_CONFIG_FILE="${CONTAINERD_CONFIG_FILE:-}"
 PAUSE_CONTAINER_VERSION="${PAUSE_CONTAINER_VERSION:-3.1-eksbuild.1}"
-CONTAINER_RUNTIME="${CONTAINER_RUNTIME:-dockerd}"
+CONTAINER_RUNTIME="${CONTAINER_RUNTIME:-containerd}"
 IP_FAMILY="${IP_FAMILY:-}"
 SERVICE_IPV6_CIDR="${SERVICE_IPV6_CIDR:-}"
 ENABLE_LOCAL_OUTPOST="${ENABLE_LOCAL_OUTPOST:-}"
@@ -561,7 +561,7 @@ EOF
 
 elif [[ "$CONTAINER_RUNTIME" = "dockerd" ]]; then
     mkdir -p /etc/docker
-    bash -c "/sbin/iptables-save > /etc/sysconfig/iptables"
+    bash -c "/sbin/iptables-save > /etc/network/iptables"
     cp -v /etc/eks/iptables-restore.service /etc/systemd/system/iptables-restore.service
     sudo chown root:root /etc/systemd/system/iptables-restore.service
     systemctl daemon-reload

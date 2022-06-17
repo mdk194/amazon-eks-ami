@@ -9,10 +9,10 @@ binary_bucket_region ?= $(AWS_DEFAULT_REGION)
 arch ?= x86_64
 ifeq ($(arch), arm64)
 instance_type ?= m6g.large
-ami_name ?= amazon-eks-arm64-node-$(K8S_VERSION_MINOR)-v$(shell date +'%Y%m%d')
+ami_name ?= ubuntu-22.04-eks-arm64-node-$(K8S_VERSION_MINOR)-v$(shell date +'%Y%m%d')
 else
 instance_type ?= m4.large
-ami_name ?= amazon-eks-node-$(K8S_VERSION_MINOR)-v$(shell date +'%Y%m%d')
+ami_name ?= ubuntu-22.04-eks-node-$(K8S_VERSION_MINOR)-v$(shell date +'%Y%m%d')
 endif
 
 ifeq ($(aws_region), cn-northwest-1)
@@ -33,12 +33,12 @@ all: 1.19 1.20 1.21 1.22
 
 .PHONY: validate
 validate:
-	$(PACKER_BINARY) validate $(foreach packerVar,$(PACKER_VARIABLES), $(if $($(packerVar)),--var $(packerVar)='$($(packerVar))',)) eks-worker-al2.json
+	$(PACKER_BINARY) validate $(foreach packerVar,$(PACKER_VARIABLES), $(if $($(packerVar)),--var $(packerVar)='$($(packerVar))',)) eks-worker-ubuntu-22.04.json
 
 .PHONY: k8s
 k8s: validate
 	@echo "$(T_GREEN)Building AMI for version $(T_YELLOW)$(kubernetes_version)$(T_GREEN) on $(T_YELLOW)$(arch)$(T_RESET)"
-	$(PACKER_BINARY) build $(foreach packerVar,$(PACKER_VARIABLES), $(if $($(packerVar)),--var $(packerVar)='$($(packerVar))',)) eks-worker-al2.json
+	$(PACKER_BINARY) build $(foreach packerVar,$(PACKER_VARIABLES), $(if $($(packerVar)),--var $(packerVar)='$($(packerVar))',)) eks-worker-ubuntu-22.04.json
 
 # Build dates and versions taken from https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html
 
