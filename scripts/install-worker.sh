@@ -56,19 +56,19 @@ sudo apt-get install -y --no-install-recommends \
     iptables \
     conntrack \
     curl \
+    wget \
     ipvsadm \
     jq \
     socat \
     unzip \
-    wget \
     apt-transport-https \
     ca-certificates \
-    software-properties-common \
     containerd \
-    runc \
-    python3-pip \
+    runc
 
-sudo pip3 install awscli
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install && rm awscliv2.zip
 
 sudo update-alternatives --set iptables /usr/sbin/iptables-legacy
 sudo update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
@@ -84,6 +84,19 @@ sudo update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
 
 # Remove the ec2-net-utils package, if it's installed. This package interferes with the route setup on the instance.
 # if yum list installed | grep ec2-net-utils; then sudo yum remove ec2-net-utils -y -q; fi
+
+################################################################################
+### systemd-networkd ###########################################################
+################################################################################
+cat <<'EOF' | sudo tee /etc/systemd/network/50-veth.link
+# Ref: https://github.com/flatcar-linux/Flatcar/issues/278#issuecomment-754032845
+# Prevent systemd-networkd from handling the MACAddresses of veth devices
+[Match]
+Driver=veth
+
+[Link]
+MACAddressPolicy=none
+EOF
 
 ################################################################################
 ### Time #######################################################################
@@ -109,14 +122,6 @@ fi
 # Disable weak ciphers
 # echo -e "\nCiphers aes128-ctr,aes256-ctr,aes128-gcm@openssh.com,aes256-gcm@openssh.com" | sudo tee -a /etc/ssh/sshd_config
 # sudo systemctl restart sshd.service
-
-################################################################################
-### ufw ###############################################
-################################################################################
-sudo systemctl stop ufw
-sudo systemctl disable ufw
-sudo systemctl mask ufw
-sudo apt-get remove -y ufw
 
 ################################################################################
 ### iptables ###################################################################
